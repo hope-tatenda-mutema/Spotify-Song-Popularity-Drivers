@@ -1,0 +1,249 @@
+---
+title: "Spotify Songs Analysis"
+author: "Hope T Mutema"
+format: html
+editor: visual
+---
+
+## Spotify Songs Analysis
+
+Using the Spotify Million Songs data set
+
+```{r data imporation and cleaning}
+#importing data for analysis
+spotify_data <- read.csv("~/Documents/HopeTMutema_WestonTNyabeze_project1/Spotify Data/spotify_data.csv")
+
+#getting a glimpse of the data structure using dplyr package function glimpse
+#firt load the library
+library(tidyverse) #dplyr is part of the tidyverse package
+
+dplyr::glimpse(spotify_data)
+
+#find number of genres
+total_genre_counts <- length(unique(spotify_data$genre)); total_genre_counts
+
+sum(is.na(spotify_data$genre)) # total number of missing values in genre column
+
+# subset of the data for analysis to represent a more specific group
+#for reproducibility we need to set seed
+set.seed(126) # set seed for reproducibility
+
+#do simple random sampling for 1000 observations to have a wide form data remaining after subset
+spotify_data_subset <- spotify_data |>
+                                    select(danceability,energy,popularity,genre,year,duration_ms) |>
+                                    dplyr::slice_sample(n=1000)
+#recoding year a categorical data to a factor with orderd leves
+spotify_data_subset$year <- factor(spotify_data_subset$year, levels = sort(unique(spotify_data_subset$year)), ordered = TRUE)
+
+#the structure of the subset 
+dplyr::glimpse(spotify_data_subset)
+
+levels(spotify_data_subset$year) # the orderd levels
+
+#Now subsetting the data for analysis, filtering by year (categorical) 
+
+spotify_data_subset_year <- spotify_data_subset|>
+                                            filter(year %in% c('2019','2020','2021','2022','2023'))
+
+#to view the structure of the new subset by year
+dplyr::glimpse(spotify_data_subset_year)
+
+
+#Univariate Analysis for Popularity
+
+summary(spotify_data_subset_year$popularity) #to get the summary statistics
+
+# for the standard deviation
+
+round(sd(spotify_data_subset_year$popularity),4)
+
+#total number of observation is
+length(spotify_data_subset_year$popularity)
+
+#to get the summary statistics are may also use the summarytools package
+
+summarytools::descr(spotify_data_subset_year$popularity)
+
+#Plotting a box plot to visualize the data 
+
+ggplot(spotify_data_subset_year, aes(y = popularity)) +
+  geom_boxplot(fill = "lightgreen") +
+  labs(title = "Boxplot of Song Popularity", y = "Popularity (0-100)") + theme(plot.background = element_blank()) +
+  theme(panel.background = element_blank())+ theme(panel.grid.major.y = element_line(colour = 'grey')) + theme(panel.grid.major.x = element_line(colour = 'grey'))
+
+
+#presenting the distribution on a histogram
+ggplot(spotify_data_subset_year) +
+  geom_histogram(
+    aes(x = popularity), 
+    bins = 10, 
+    fill = "steelblue", 
+    color = "black",
+    boundary = 0     # Makes first bin start at 0
+  ) +
+  labs(
+    title = "Histogram of Song Popularity",
+    x = "Spotify Popularity Score (0-100)",
+    y = "Number of Songs"
+  ) +
+  theme(plot.background = element_blank()) +
+  theme(panel.background = element_blank()) +
+  theme(panel.grid.major.y = element_line(colour = "grey")) +
+  theme(panel.grid.major.x = element_line(color = "grey"))
+
+
+#Bivariate Analysis
+#checking the relationship between danceability and popularity
+ggplot(spotify_data_subset_year, aes(x = danceability, y = popularity)) +
+  geom_point(alpha = 0.6, color = "steelblue") +
+  geom_smooth(method = "lm", color = "red") +
+  labs(
+    title = "Correlation: Popularity vs. Danceability",
+    x = "Danceability",
+    y = "Popularity"
+  ) +
+  theme_minimal()
+#a plot of correlation of energy and popularity
+ggplot(spotify_data_subset_year, aes(x = energy, y = popularity)) +
+  geom_point(alpha = 0.6, color = "steelblue") +
+  geom_smooth(method = "lm", color = "red") +
+  labs(
+    title = "Correlation: Popularity vs. Energy",
+    x = "Energy",
+    y = "Popularity"
+  ) +
+  theme_minimal()
+
+#the correlation between duration of the song and popularity
+ggplot(spotify_data_subset_year, aes(x = duration_ms, y = popularity)) +
+  geom_point(alpha = 0.6, color = "steelblue") +
+  geom_smooth(method = "lm", color = "red") +
+  labs(
+    title = "Correlation: Popularity vs. Duration",
+    x = "Duration",
+    y = "Popularity"
+  ) +
+  theme_minimal()
+
+
+#trend analysis of music popularity over time
+# Calculate mean popularity for each year
+popularity_by_year <- spotify_data |>
+  group_by(year) |>
+  summarise(mean_popularity = mean(popularity, na.rm = TRUE))
+
+# View the table of mean popularity per year
+print(popularity_by_year)
+
+popularity_by_year$year <- as.numeric(as.character(popularity_by_year$year))
+
+# Create the line plot in base R
+plot(
+  popularity_by_year$year, popularity_by_year$mean_popularity,
+  type = "o",                     # "o" = both points and lines
+  col = "steelblue",              # Line and points color
+  pch = 16,                       # Solid circle points
+  xlab = "Year",                  # X-axis label
+  ylab = "Mean Popularity",       # Y-axis label
+  main = "Trend of Music Popularity Over Time"
+)
+
+#danceability vs year
+# Calculate mean danceability for each year in your data
+danceability_by_year <- spotify_data_subset_year |>
+  group_by(year) |>  # Group data by year
+  summarise(
+    mean_danceability = mean(danceability, na.rm = TRUE),  # Mean danceability per year
+    n_songs = n()                                          # Number of songs per year
+  )
+
+# View the resulting summary table
+print(danceability_by_year)
+
+danceability_by_year$year <- as.numeric(as.character(danceability_by_year$year))
+
+#trend line
+# Create the line plot in base R
+plot(
+  danceability_by_year$year, danceability_by_year$mean_danceability,
+  type = "o",                     # "o" = both points and lines
+  col = "steelblue",              # Line and points color
+  pch = 16,                       # Solid circle points
+  xlab = "Year",                  # X-axis label
+  ylab = "Mean Danceability",       # Y-axis label
+  main = "Trend of Music Danceability Over Time"
+)
+
+#bivariate analysis of popular genre each year using the whole population data observations
+# Frequency table: genre count by year
+genre_year_counts <- spotify_data |>
+  group_by(year, genre) |>
+  summarise(count = n()) |>
+  arrange(year, desc(count))
+
+print(genre_year_counts)
+
+# Display top 5 genres by year
+top_genres_by_year <- genre_year_counts |>
+  group_by(year) |>
+  top_n(5, count)
+
+print(top_genres_by_year)
+
+# Alternatively, create a wide format table
+genre_year_wide <- genre_year_counts |>
+  tidyr::spread(key = year, value = count, fill = 0)
+
+print(genre_year_wide)
+
+# the top genre per year
+top_genre_each_year <- spotify_data |>
+  group_by(year, genre) |>
+  summarise(count = n(), .groups = 'drop') |>
+  arrange(year, desc(count)) |>
+  group_by(year) |>
+  slice(1) |>  # Take only the first row of each year group, i.e., the top genre
+  ungroup()
+
+print(top_genre_each_year)
+
+#the most popular genre in the course of 2 decades being the with most releases 
+most_frequent_top_genre <- top_genre_each_year |>
+  count(genre, name = "years_as_top") |>
+  arrange(desc(years_as_top)) |>
+  slice(1)   # Take the genre with the highest count
+
+print(most_frequent_top_genre)
+
+
+
+#trivariate analysis
+# Step 1: Create a categorical variable for danceability
+# This divides songs into 'High' and 'Low' danceability based on the median
+spotify_data_subset_year <- spotify_data_subset_year %>%
+  mutate(danceability_group = ifelse(
+    danceability >= median(danceability, na.rm = TRUE),
+    "High", "Low"
+  ))
+
+# Step 2: Calculate mean popularity by year and danceability group
+# Also returns the number of songs in each group for context
+trivariate_summary <- spotify_data_subset_year |>
+  group_by(year, danceability_group) |>
+  summarise(
+    mean_popularity = mean(popularity, na.rm = TRUE),
+    n_songs = n()
+  ); trivariate_summary
+
+#visualisation of the trivariate analysis
+ggplot(trivariate_summary, aes(x = year, y = mean_popularity, color = danceability_group, group = danceability_group)) +
+  geom_line(size = 1.2) +
+  geom_point(size = 2) +
+  labs(
+    title = "Mean Popularity over Years by Danceability Group",
+    x = "Year",
+    y = "Mean Popularity",
+    color = "Danceability Group"
+  ) +
+  theme_minimal()
+```
